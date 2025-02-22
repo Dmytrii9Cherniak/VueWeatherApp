@@ -31,6 +31,13 @@
           </CvSelect>
         </div>
 
+        <div class="options">
+          <CvSelect v-model="locale" :label="$t('weather.language')">
+            <CvSelectOption value="en" label="English" />
+            <CvSelectOption value="uk" label="Українська" />
+          </CvSelect>
+        </div>
+
       </div>
 
       <CvButton @click="fetchWeather" :disabled="loading">
@@ -64,22 +71,26 @@
       </div>
 
       <div v-if="forecast.length" class="forecast">
-        <h3>{{ $t('weather.forecast_5_days') }}</h3>
         <div class="forecast-list">
-          <div v-for="day in forecast" :key="day.dt" class="forecast-item">
-            <p class="date">📅 {{ formatDate(day.dt_txt) }}</p>
-            <p>
-              🌡 {{ $t('weather.temperature') }}: {{ day.main.temp }}°{{
-                units === 'metric' ? 'C' : 'F'
-              }}
-            </p>
-            <p>
-              💨 {{ $t('weather.wind') }}: {{ day.wind.speed }}
-              {{
-                units === 'metric' ? $t('weather.meters_per_second') : $t('weather.miles_per_hour')
-              }}
-            </p>
-            <p>☁ {{ translateWeather(day.weather[0].description) }}</p>
+          <div v-if="groupedForecast.length" class="forecast">
+            <h3>{{ $t('weather.forecast_5_days') }}</h3>
+            <div class="forecast-list">
+              <div v-for="day in groupedForecast" :key="day.dt" class="forecast-item">
+                <p class="date">📅 {{ formatDate(day.dt_txt) }}</p>
+                <p>
+                  🌡 {{ $t('weather.temperature') }}: {{ day.main.temp }}°{{
+                    units === 'metric' ? 'C' : 'F'
+                  }}
+                </p>
+                <p>
+                  💨 {{ $t('weather.wind') }}: {{ day.wind.speed }}
+                  {{
+                    units === 'metric' ? $t('weather.meters_per_second') : $t('weather.miles_per_hour')
+                  }}
+                </p>
+                <p>☁ {{ translateWeather(day.weather[0].description) }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -116,6 +127,25 @@ onMounted(() => {
   }
   fetchWeather()
 })
+
+watch(locale, (newLocale) => {
+  localStorage.setItem('locale', newLocale);
+});
+
+const groupedForecast = computed(() => {
+  const dailyForecast: Record<string, ForecastItem> = {};
+
+  forecast.value.forEach((item) => {
+    const date = item.dt_txt.split(" ")[0]; // Отримуємо лише дату без часу
+
+    // Вибираємо прогноз на 12:00, якщо є, або перший прогноз на цей день
+    if (!dailyForecast[date] || item.dt_txt.includes("12:00:00")) {
+      dailyForecast[date] = item;
+    }
+  });
+
+  return Object.values(dailyForecast);
+});
 
 const fetchWeather = async () => {
   if (!city.value.trim()) {

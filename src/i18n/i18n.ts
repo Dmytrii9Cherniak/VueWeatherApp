@@ -8,4 +8,6 @@ export const i18n = createI18n({
   locale: localStorage.getItem('locale') ||'uk',
   fallbackLocale: 'uk',
   messages: { uk, en },
+  missingWarn: false,
+  fallbackWarn: false
 });
