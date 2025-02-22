@@ -1,7 +1,7 @@
 <template>
   <div class="weather-app">
     <CvTile class="weather-container">
-      <h1>{{ $t("weather.forecast") }}</h1>
+      <h1>{{ $t('weather.forecast') }}</h1>
 
       <div class="controls">
         <div class="search-box">
@@ -11,10 +11,6 @@
             :placeholder="$t('weather.placeholder')"
             @input="city = city.replace(/\d/g, '')"
           />
-
-          <CvButton @click="fetchWeather" :disabled="loading">
-            {{ $t("weather.search") }}
-          </CvButton>
         </div>
 
         <div class="options">
@@ -22,13 +18,24 @@
             <CvSelectOption value="metric" :label="$t('weather.celsius')" />
             <CvSelectOption value="imperial" :label="$t('weather.fahrenheit')" />
           </CvSelect>
+        </div>
 
-          <CvSelect v-model="locale" :label="$t('weather.language')" @change="handleLanguageChange">
-            <CvSelectOption value="uk" :label="$t('weather.ukrainian')" />
-            <CvSelectOption value="en" :label="$t('weather.english')" />
+        <div class="options">
+          <CvSelect v-model="countryCode" :label="$t('weather.country')">
+            <CvSelectOption
+              v-for="country in translatedCountries"
+              :key="country.code"
+              :value="country.code"
+              :label="country.label"
+            />
           </CvSelect>
         </div>
+
       </div>
+
+      <CvButton @click="fetchWeather" :disabled="loading">
+        {{ $t('weather.search') }}
+      </CvButton>
 
       <div class="loading-block">
         <CvLoading v-if="loading" :description="$t('weather.loading')" />
@@ -37,134 +44,152 @@
       <CvInlineNotification
         v-if="isOpen"
         kind="error"
-        :title="t(errorKey || 'weather.error')"
+        :title="t(errorKey)"
         @close="isOpen = false"
       />
 
       <div v-if="weather" class="weather-info">
         <h2>{{ weather.name }}, {{ weather.sys.country }}</h2>
-        <p>🌡 {{ $t("weather.temperature") }}: {{ weather.main.temp }}°{{ units === "metric" ? "C" : "F" }}</p>
-        <p>💧 {{ $t("weather.humidity") }}: {{ weather.main.humidity }}%</p>
-        <p>💨 {{ $t("weather.wind") }}: {{ weather.wind.speed }} {{ units === "metric" ? $t("weather.meters_per_second") : $t("weather.miles_per_hour") }}</p>
+        <p>
+          🌡 {{ $t('weather.temperature') }}: {{ weather.main.temp }}°{{
+            units === 'metric' ? 'C' : 'F'
+          }}
+        </p>
+        <p>💧 {{ $t('weather.humidity') }}: {{ weather.main.humidity }}%</p>
+        <p>
+          💨 {{ $t('weather.wind') }}: {{ weather.wind.speed }}
+          {{ units === 'metric' ? $t('weather.meters_per_second') : $t('weather.miles_per_hour') }}
+        </p>
         <p>☁ {{ translateWeather(weather.weather[0].description) }}</p>
       </div>
 
       <div v-if="forecast.length" class="forecast">
-        <h3>{{ $t("weather.forecast_5_days") }}</h3>
+        <h3>{{ $t('weather.forecast_5_days') }}</h3>
         <div class="forecast-list">
           <div v-for="day in forecast" :key="day.dt" class="forecast-item">
             <p class="date">📅 {{ formatDate(day.dt_txt) }}</p>
-            <p>🌡 {{ $t("weather.temperature") }}: {{ day.main.temp }}°{{ units === "metric" ? "C" : "F" }}</p>
-            <p>💨 {{ $t("weather.wind") }}: {{ day.wind.speed }} {{ units === "metric" ? $t("weather.meters_per_second") : $t("weather.miles_per_hour") }}</p>
+            <p>
+              🌡 {{ $t('weather.temperature') }}: {{ day.main.temp }}°{{
+                units === 'metric' ? 'C' : 'F'
+              }}
+            </p>
+            <p>
+              💨 {{ $t('weather.wind') }}: {{ day.wind.speed }}
+              {{
+                units === 'metric' ? $t('weather.meters_per_second') : $t('weather.miles_per_hour')
+              }}
+            </p>
             <p>☁ {{ translateWeather(day.weather[0].description) }}</p>
           </div>
         </div>
       </div>
-
-      <CvInlineNotification
-        v-if="isOpen"
-        kind="error"
-        :title="error"
-        @close="isOpen = false"
-      />
     </CvTile>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from "vue";
-import { useI18n } from "vue-i18n";
-import { WeatherService } from "@/services/weather.service.ts";
-import type { WeatherData } from "@/models/weather.data.model.ts";
-import type { ForecastItem } from "@/models/forecast.item.model.ts";
+import { ref, onMounted, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { WeatherService } from '@/services/weather.service.ts'
+import type { WeatherData } from '@/models/weather.data.model.ts'
+import type { ForecastItem } from '@/models/forecast.item.model.ts'
 import { localStorageUtils } from '@/utils/city.store.util.ts'
+import { countries } from '@/utils/coutries.list.ts'
 
-const { t, locale } = useI18n();
+const { t, locale } = useI18n()
 
-const city = ref<string>(localStorageUtils.getSelectedCity());
-const weather = ref<WeatherData | null>(null);
-const forecast = ref<ForecastItem[]>([]);
-const loading = ref<boolean>(false);
-const errorKey = ref<string | null>(null);
-const units = ref<"metric" | "imperial">(localStorage.getItem("units") as "metric" | "imperial" || "metric");
-const selectedHour = ref<string>("12:00:00");
-const isOpen = ref<boolean>(false);
-
-
-const error = computed(() => (errorKey.value ? t(errorKey.value) : ""));
+const city = ref<string>(localStorageUtils.getSelectedCity())
+const weather = ref<WeatherData | null>(null)
+const forecast = ref<ForecastItem[]>([])
+const loading = ref<boolean>(false)
+const errorKey = ref<string>('weather.error')
+const isOpen = ref<boolean>(false)
+const countryCode = ref<string | null>(null)
+const units = ref<'metric' | 'imperial'>(
+  (localStorage.getItem('units') as 'metric' | 'imperial') || 'metric',
+)
 
 onMounted(() => {
-  const savedLocale = localStorage.getItem("locale") as "uk" | "en";
+  const savedLocale = localStorage.getItem('locale') as 'uk' | 'en'
   if (savedLocale) {
-    locale.value = savedLocale;
+    locale.value = savedLocale
   }
-
-  fetchWeather();
-});
+  fetchWeather()
+})
 
 const fetchWeather = async () => {
   if (!city.value.trim()) {
-    errorKey.value = "weather.error_city";
-    isOpen.value = true;
-    return;
+    errorKey.value = 'weather.error_city'
+    isOpen.value = true
+    return
   }
 
   if (/\d/.test(city.value)) {
-    errorKey.value = "weather.invalid_city";
-    isOpen.value = true;
-    return;
+    errorKey.value = 'weather.invalid_city'
+    isOpen.value = true
+    return
   }
 
-  loading.value = true;
-  errorKey.value = null;
-  isOpen.value = false;
+  loading.value = true
+  errorKey.value = 'weather.error'
+  isOpen.value = false
 
   try {
-    const weatherData: WeatherData | null = await WeatherService.getWeather(city.value, units.value, locale.value as "uk" | "en");
+    const weatherData: WeatherData | null = await WeatherService.getWeather(
+      city.value,
+      countryCode.value,
+      units.value,
+      locale.value as 'uk' | 'en',
+    )
 
-    if (!weatherData || weatherData.cod === "404") {
-      errorKey.value = "weather.city_not_found";
-      isOpen.value = true;
-      return;
+    if (!weatherData || weatherData.cod === '404') {
+      errorKey.value = 'weather.city_not_found'
+      isOpen.value = true
+      return
     }
 
-    weather.value = weatherData;
-    localStorageUtils.setSelectedCity(city.value);
+    weather.value = weatherData
+    localStorageUtils.setSelectedCity(city.value)
 
-    const forecastData = await WeatherService.getForecast(city.value, units.value, locale.value as "uk" | "en", selectedHour.value);
-    forecast.value = forecastData.length ? forecastData : [];
-
+    const forecastData = await WeatherService.getForecast(
+      city.value,
+      countryCode.value,
+      units.value,
+      locale.value as 'uk' | 'en',
+    )
+    forecast.value = forecastData.length ? forecastData : []
   } catch (err) {
-    errorKey.value = "weather.fetch_error";
-    isOpen.value = true;
-    console.error(err);
+    errorKey.value = 'weather.fetch_error'
+    isOpen.value = true
+    console.error(err)
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
-const handleLanguageChange = () => {
-  localStorage.setItem("locale", locale.value);
-};
+const translatedCountries = computed(() =>
+  countries.map((country) => ({
+    code: country.code,
+    label: t(`weather.${country.code || 'any_country'}`, country.label),
+  })),
+)
 
 const translateWeather = (description: string): string => {
-  const key = description.toLowerCase().replace(/\s+/g, "_");
-  return t(`weather.${key}`, description);
-};
+  const key = description.toLowerCase().replace(/\s+/g, '_')
+  return t(`weather.${key}`, description)
+}
 
 const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleDateString(locale.value, {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-  });
-};
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+  })
+}
 
 watch(locale, () => {
-  if (errorKey.value) {
-    errorKey.value = errorKey.value;
-  }
-});
+  localStorage.setItem('locale', locale.value)
+})
 </script>
 
 <style lang="scss" scoped>
@@ -198,34 +223,6 @@ watch(locale, () => {
   flex-direction: column;
   gap: 15px;
   margin-bottom: 20px;
-
-  .search-box {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-  }
-
-  .options {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-  }
-}
-
-.loading-block {
-  display: flex;
-  justify-content: center;
-}
-
-.weather-info {
-  margin-top: 20px;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 20px;
-  border-radius: 8px;
-}
-
-.forecast {
-  margin-top: 20px;
 }
 
 .forecast-list {
@@ -243,15 +240,9 @@ watch(locale, () => {
   max-width: 200px;
   text-align: center;
   transition: transform 0.3s ease;
-  word-wrap: break-word;
-
-  &:hover {
-    transform: scale(1.05);
-  }
 }
 
 .date {
   font-weight: bold;
 }
-
 </style>

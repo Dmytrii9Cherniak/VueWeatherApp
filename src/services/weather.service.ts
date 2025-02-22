@@ -7,12 +7,14 @@ import { environment } from '@/environments/environment.dev.ts';
 export class WeatherService {
   static async getWeather(
     city: string,
+    countryCode: string | null,
     units: 'metric' | 'imperial',
     lang: 'uk' | 'en'
   ): Promise<WeatherData | null> {
     try {
+      const query = countryCode ? `${city},${countryCode}` : city;
       const response = await axios.get(`${environment.apiUrl}/weather`, {
-        params: { q: city, appid: environment.apiKey, units, lang },
+        params: { q: query, appid: environment.apiKey, units, lang },
       });
       return response.data as WeatherData;
     } catch (error) {
@@ -23,13 +25,15 @@ export class WeatherService {
 
   static async getForecast(
     city: string,
+    countryCode: string | null,
     units: 'metric' | 'imperial',
     lang: 'uk' | 'en',
     filterTime?: string
   ): Promise<ForecastItem[]> {
     try {
+      const query = countryCode ? `${city},${countryCode}` : city;
       const response = await axios.get(`${environment.apiUrl}/forecast`, {
-        params: { q: city, appid: environment.apiKey, units, lang },
+        params: { q: query, appid: environment.apiKey, units, lang },
       });
 
       const forecastData = response.data as ForecastResponse;
