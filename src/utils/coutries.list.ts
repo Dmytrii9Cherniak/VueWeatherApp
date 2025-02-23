@@ -1,5 +1,5 @@
 export const countries = [
-  { code: "", label: "Any Country" }, // Переклад треба буде зробити у компоненті
+  { code: "", label: "Any Country" },
   { code: "ua", label: "Ukraine" },
   { code: "us", label: "USA" },
   { code: "de", label: "Germany" },

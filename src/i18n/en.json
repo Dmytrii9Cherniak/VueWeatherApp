@@ -35,6 +35,8 @@
     "moderate_rain": "Moderate Rain",
     "light_rain": "Light Rain",
     "miles_per_hour": "mph",
+    "details_for": "Detail weather for",
+    "click_details": "Click to see detail weather",
     "ua": "Ukraine",
     "us": "USA",
     "de": "Germany",

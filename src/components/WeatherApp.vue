@@ -37,7 +37,6 @@
             <CvSelectOption value="uk" label="Українська" />
           </CvSelect>
         </div>
-
       </div>
 
       <CvButton @click="fetchWeather" :disabled="loading">
@@ -71,29 +70,46 @@
       </div>
 
       <div v-if="forecast.length" class="forecast">
+        <h3>{{ $t('weather.forecast_5_days') }}</h3>
         <div class="forecast-list">
-          <div v-if="groupedForecast.length" class="forecast">
-            <h3>{{ $t('weather.forecast_5_days') }}</h3>
-            <div class="forecast-list">
-              <div v-for="day in groupedForecast" :key="day.dt" class="forecast-item">
-                <p class="date">📅 {{ formatDate(day.dt_txt) }}</p>
-                <p>
-                  🌡 {{ $t('weather.temperature') }}: {{ day.main.temp }}°{{
-                    units === 'metric' ? 'C' : 'F'
-                  }}
-                </p>
-                <p>
-                  💨 {{ $t('weather.wind') }}: {{ day.wind.speed }}
-                  {{
-                    units === 'metric' ? $t('weather.meters_per_second') : $t('weather.miles_per_hour')
-                  }}
-                </p>
-                <p>☁ {{ translateWeather(day.weather[0].description) }}</p>
-              </div>
-            </div>
+          <div
+            v-for="day in groupedForecast"
+            :key="day.dt"
+            class="forecast-item"
+            :title="t('weather.click_details')"
+            :class="{ 'active-day': selectedDate === day.dt_txt.split(' ')[0] }"
+            @click="toggleSelectedDate(day.dt_txt.split(' ')[0])"
+          >
+            <p class="date">📅 {{ formatDate(day.dt_txt) }}</p>
+            <p>
+              🌡 {{ t('weather.temperature') }}: {{ day.main.temp }}°{{ units === 'metric' ? 'C' : 'F' }}
+            </p>
+            <p>
+              💨 {{ t('weather.wind') }}: {{ day.wind.speed }}
+              {{ units === 'metric' ? t('weather.meters_per_second') : t('weather.miles_per_hour') }}
+            </p>
+            <p>☁ {{ translateWeather(day.weather[0].description) }}</p>
           </div>
         </div>
       </div>
+
+      <div v-if="selectedDate" class="hourly-forecast">
+        <h3>{{ t('weather.details_for') }} {{ formatDate(selectedDate) }}</h3>
+        <div class="forecast-list">
+          <div v-for="hour in hourlyForecast" :key="hour.dt" class="forecast-item">
+            <p class="time">🕒 {{ hour.dt_txt.split(' ')[1] }}</p>
+            <p>
+              🌡 {{ t('weather.temperature') }}: {{ hour.main.temp }}°{{ units === 'metric' ? 'C' : 'F' }}
+            </p>
+            <p>
+              💨 {{ t('weather.wind') }}: {{ hour.wind.speed }}
+              {{ units === 'metric' ? t('weather.meters_per_second') : t('weather.miles_per_hour') }}
+            </p>
+            <p>☁ {{ translateWeather(hour.weather[0].description) }}</p>
+          </div>
+        </div>
+      </div>
+
     </CvTile>
   </div>
 </template>
@@ -119,6 +135,15 @@ const countryCode = ref<string | null>(null)
 const units = ref<'metric' | 'imperial'>(
   (localStorage.getItem('units') as 'metric' | 'imperial') || 'metric',
 )
+const selectedDate = ref<string | null>(null);
+
+const toggleSelectedDate = (date: string) => {
+  selectedDate.value = selectedDate.value === date ? null : date;
+};
+
+const hourlyForecast = computed(() => {
+  return selectedDate.value ? forecast.value.filter(item => item.dt_txt.startsWith(selectedDate.value!)) : [];
+});
 
 onMounted(() => {
   const savedLocale = localStorage.getItem('locale') as 'uk' | 'en'
@@ -136,9 +161,8 @@ const groupedForecast = computed(() => {
   const dailyForecast: Record<string, ForecastItem> = {};
 
   forecast.value.forEach((item) => {
-    const date = item.dt_txt.split(" ")[0]; // Отримуємо лише дату без часу
+    const date = item.dt_txt.split(" ")[0];
 
-    // Вибираємо прогноз на 12:00, якщо є, або перший прогноз на цей день
     if (!dailyForecast[date] || item.dt_txt.includes("12:00:00")) {
       dailyForecast[date] = item;
     }
@@ -275,4 +299,20 @@ watch(locale, () => {
 .date {
   font-weight: bold;
 }
+
+
+.forecast-item {
+  cursor: pointer;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.forecast-item:hover {
+  transform: scale(1.05);
+}
+
+.active-day {
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px solid white;
+}
+
 </style>
